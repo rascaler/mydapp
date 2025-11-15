@@ -154,4 +154,40 @@ func TestSolTransaction(t *testing.T) {
 	spew.Dump(sig)
 }
 
-// 订阅
+// 订阅账户变更
+func TestSubScribe(t *testing.T) {
+	// 使用 WebSocket 客户端（注意是 ws.New，不是 rpc.New）
+
+	// 要监听的账户地址（例如一个 Token 账户或钱包）
+	accountPubkey, err := solana.PublicKeyFromBase58(solaccount1)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 订阅账户
+	sub, err := solwsclient.AccountSubscribe(
+		accountPubkey,
+		"confirmed", // 或 "finalized"
+	)
+	if err != nil {
+		log.Fatal("订阅失败:", err)
+	}
+	defer sub.Unsubscribe()
+
+	fmt.Println("✅ 正在监听账户变更...")
+
+	// 持续接收通知
+	for {
+		msg, err := sub.Recv(context.Background())
+		if err != nil {
+			log.Println("接收消息出错:", err)
+			break
+		}
+
+		// 打印账户数据（base64 编码）
+		fmt.Printf("🔔 账户更新！Slot: %d\n", msg.Context.Slot)
+		fmt.Printf("   Lamports: %d\n", msg.Value.Lamports)
+		fmt.Printf("   Owner: %s\n", msg.Value.Owner)
+		fmt.Printf("   Data 长度: %d 字节\n", len(msg.Value.Data.GetBinary()))
+	}
+}
